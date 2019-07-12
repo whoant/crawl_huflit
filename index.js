@@ -2,29 +2,50 @@ const axios 	= require('axios');
 const fs 		= require('fs');
 const cheerio   = require('cheerio');
 
-var domain = 'http://ts.huflit.edu.vn/examinee/view/';
+var start = 1;
+var end = start + 499;
+var fileName = 'data.json';
+
+crawlMark();
 
 
-var request = [];
-var start = 8500;
-var end = 9000;
-var fileName = 'data17.json';
 
-for (var i = start; i < end; i++) {
-	request.push(getData(pad(i, 4)));
+function crawlMark(){
+	console.log('Start :' + start);
+	console.log('End :' + end);
+	var request = [];
+
+
+	for (var i = start; i < end; i++) {
+		request.push(getData(fillNumber(i, 4)));
+
+	}
+
+
+	Promise.all(request).then(function(data){
+		fs.writeFileSync(fileName, JSON.stringify(data), {encoding: 'utf8', flag: 'a'});
+		start = end + 1;
+		end = start + 499;
+		setTimeout(function(){
+			console.log('Wait 3s');
+			crawlMark();
+		}, 3000)
+		
+	});
+	
 }
 
 
-Promise.all(request).then(function(data){
-
-	fs.writeFileSync(fileName, JSON.stringify(data), {encoding: 'utf8'});
-});
-
-
-function pad(n, width, z) {
-	z = z || '0';
-	n = n + '';
-	return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+function fillNumber(n, width, fillNumber = 0) {
+	var dataReturn;
+	n = n.toString();
+	if (n.length < width) {
+		dataReturn = new Array(width - n.length + 1).join(fillNumber) + n;
+	}else{
+		dataReturn = n;
+	}
+	return dataReturn;
+	
 }
 
 function getData(number){
@@ -33,7 +54,7 @@ function getData(number){
 
 			if (typeof data == 'object') {
 				data.total = data.subject1 + data.subject2 + data.subject3;
-				console.log(data.name);
+				// console.log(data.name);
 				
 			}
 			reject(data);
@@ -44,7 +65,8 @@ function getData(number){
 
 
 async function Crawler(number){
-	return await axios.get(domain + '00'+number).then(function(data){
+	return await axios.get('http://ts.huflit.edu.vn/examinee/view/00'+number)
+	.then(function(data){
 		var $ = cheerio.load(data.data);
 		var codeSubject = $('#ExamineeType_branch_id').val();
 		if (codeSubject === '[7480201] Công nghệ thông tin'){
